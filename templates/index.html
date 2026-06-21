@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Activity Recognition - Real-time Sensor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🏃</span>
+                    <div>
+                        <h1>Activity Recognition</h1>
+                        <span class="subtitle">Real-time Sensor Data</span>
+                    </div>
+                </div>
+                <div class="header-info">
+                    <span class="badge">🎯 Best: {{ best_model }}</span>
+                    <span class="badge">📊 {{ selected_features }} features</span>
+                    <span class="badge success">✅ {{ models|length }} models</span>
+                    {% if is_mobile %}
+                    <span class="badge" style="background: rgba(46, 213, 115, 0.3);">📱 Mobile</span>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+
+        <!-- Model Comparison -->
+        <div class="model-comparison">
+            <div class="card">
+                <h3>🤖 Model Performance Comparison</h3>
+                <div class="model-grid">
+                    {% for model in models %}
+                    <div class="model-card {% if model.name == best_model %}best{% endif %}">
+                        <div class="model-name">{{ model.name }}</div>
+                        <div class="model-accuracy">{{ model.accuracy }}</div>
+                        <div class="model-cv">CV: {{ model.cv_score }}</div>
+                        {% if model.name == best_model %}
+                        <div class="model-badge">🏆 Best</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn" data-tab="realtime">
+                    <span class="tab-icon">📡</span> Real-time Sensor
+                </button>
+                <button class="tab-btn active" data-tab="upload">
+                    <span class="tab-icon">📤</span> Upload CSV
+                </button>
+                <button class="tab-btn" data-tab="manual">
+                    <span class="tab-icon">🎛️</span> Manual Input
+                </button>
+                <button class="tab-btn" data-tab="sample">
+                    <span class="tab-icon">📊</span> Sample Data
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Real-time Sensor Tab -->
+                <div id="realtime" class="tab-pane">
+                    <div class="card">
+                        <h3>📡 Real-time Sensor Data</h3>
+                        <p class="text-muted">Connect to your device sensors for real-time activity recognition</p>
+                        
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
+                            <button class="btn btn-success" onclick="startSensor()" id="startBtn">
+                                ▶️ Start Sensors
+                            </button>
+                            <button class="btn btn-danger" onclick="stopSensor()" id="stopBtn" style="display:none;">
+                                ⏹️ Stop Sensors
+                            </button>
+                            <select id="sensorModelSelect" class="model-select">
+                                {% for model in models %}
+                                <option value="{{ model.name }}" {% if model.name == best_model %}selected{% endif %}>
+                                    {{ model.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <span id="sensorStatus" style="padding: 8px; background: #f3f4f6; border-radius: 8px;">
+                                ⚪ Not connected
+                            </span>
+                        </div>
+                        
+                        <!-- Sensor Data Display -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                            <div class="sensor-reading">
+                                <div class="sensor-label">Accelerometer</div>
+                                <div class="sensor-values" id="accelData">X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
+                            </div>
+                            <div class="sensor-reading">
+                                <div class="sensor-label">Gyroscope</div>
+                                <div class="sensor-values" id="gyroData">X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
+                            </div>
+                            <div class="sensor-reading">
+                                <div class="sensor-label">Orientation</div>
+                                <div class="sensor-values" id="orientationData">α: 0.00<br>β: 0.00<br>γ: 0.00</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Real-time Results -->
+                        <div id="realtimeResults" class="results-container"></div>
+                    </div>
+                </div>
+
+                <!-- Upload Tab -->
+                <div id="upload" class="tab-pane active">
+                    <div class="card">
+                        <h3>📤 Upload Sensor Data CSV</h3>
+                        <p class="text-muted">Upload a CSV file with sensor data for batch prediction</p>
+                        
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">📁</div>
+                            <p>Drag & drop your CSV file here or click to browse</p>
+                            <input type="file" id="csvFile" accept=".csv" style="display:none">
+                            <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">
+                                Choose File
+                            </button>
+                        </div>
+                        
+                        <div id="fileInfo" style="display:none;" class="file-info">
+                            <span class="file-name"></span>
+                            <div style="display:flex; gap:10px;">
+                                <select id="csvModelSelect" class="model-select">
+                                    {% for model in models %}
+                                    <option value="{{ model.name }}" {% if model.name == best_model %}selected{% endif %}>
+                                        {{ model.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <button class="btn btn-success" onclick="predictCSV()">🔮 Predict</button>
+                            </div>
+                        </div>
+                        
+                        <div id="csvResults" class="results-container"></div>
+                    </div>
+                </div>
+
+                <!-- Manual Tab -->
+                <div id="manual" class="tab-pane">
+                    <div class="card">
+                        <h3>🎛️ Manual Feature Input</h3>
+                        <p class="text-muted">Adjust the sliders to see how different features affect predictions</p>
+                        
+                        <div style="margin: 10px 0; display: flex; gap: 10px; align-items: center;">
+                            <label style="font-weight: 500;">Select Model:</label>
+                            <select id="manualModelSelect" class="model-select">
+                                {% for model in models %}
+                                <option value="{{ model.name }}" {% if model.name == best_model %}selected{% endif %}>
+                                    {{ model.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="feature-grid" id="featureGrid">
+                            <!-- Features will be inserted here by JavaScript -->
+                        </div>
+                        
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button class="btn btn-success btn-large" onclick="predictManual()">
+                                🔮 Predict Activity
+                            </button>
+                            <button class="btn btn-secondary" onclick="resetSliders()">
+                                Reset All
+                            </button>
+                        </div>
+                        
+                        <div id="manualResults" class="results-container"></div>
+                    </div>
+                </div>
+
+                <!-- Sample Tab -->
+                <div id="sample" class="tab-pane">
+                    <div class="card">
+                        <h3>📊 Sample Data Predictions</h3>
+                        <p class="text-muted">Generate predictions on random samples from the training data</p>
+                        
+                        <div style="margin: 10px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <label style="font-weight: 500;">Select Model:</label>
+                            <select id="sampleModelSelect" class="model-select">
+                                {% for model in models %}
+                                <option value="{{ model.name }}" {% if model.name == best_model %}selected{% endif %}>
+                                    {{ model.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-info btn-large" onclick="predictSample()">
+                                🎲 Generate Samples
+                            </button>
+                        </div>
+                        
+                        <div id="sampleResults" class="results-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Importance -->
+        <div class="feature-importance">
+            <div class="card">
+                <h3>📈 Top 10 Most Important Features</h3>
+                <div id="importanceChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- Activity Types -->
+        <div class="legend-card">
+            <h4>🎯 Activity Types</h4>
+            <div class="legend-grid" id="legendGrid"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='sensor.js') }}"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Pass data from Flask to JavaScript
+        const features = {{ features|tojson|safe }};
+        const activities = {{ activities|tojson|safe }};
+        const modelPerformance = {{ models|tojson|safe }};
+        const isMobile = {{ is_mobile|tojson|safe }};
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            if (features && features.length > 0) {
+                initializeFeatures();
+                initializeLegend();
+                initializeTabs();
+                initializeDragDrop();
+                initializeFeatureImportance();
+                
+                // Auto-start sensors if on mobile
+                if (isMobile) {
+                    setTimeout(startSensor, 1000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
